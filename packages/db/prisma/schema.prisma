@@ -1,0 +1,195 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  platformRole  String    @default("customer")
+  dateOfBirth   DateTime?
+  deletedAt     DateTime?
+  locale        String    @default("es")
+
+  sessions       Session[]
+  accounts       Account[]
+  purchases      Purchase[]
+  venueRoles     UserVenueRole[]
+  auditEvents    AuditEvent[]    @relation("Actor")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model Venue {
+  id               String   @id @default(cuid())
+  name             String
+  city             String   @default("Madrid")
+  address          String
+  lat              Float?
+  lng              Float?
+  status           String   @default("pending")
+  stripeAccountId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  products   PassProduct[]
+  purchases  Purchase[]
+  roles      UserVenueRole[]
+  auditEvents AuditEvent[]
+
+  @@map("venues")
+}
+
+model UserVenueRole {
+  id        String   @id @default(cuid())
+  userId    String
+  venueId   String
+  role      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, venueId, role])
+  @@map("user_venue_roles")
+}
+
+model PassProduct {
+  id             String   @id @default(cuid())
+  venueId        String
+  type           String
+  name           String
+  priceCents     Int      @map("price_cents")
+  quantityTotal  Int      @map("quantity_total")
+  quantitySold   Int      @default(0) @map("quantity_sold")
+  validFrom      DateTime @map("valid_from")
+  validTo        DateTime @map("valid_to")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@map("pass_products")
+}
+
+model Purchase {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  passProductId   String    @map("pass_product_id")
+  venueId         String    @map("venue_id")
+  priceCentsPaid  Int       @map("price_cents_paid")
+  status          String
+  redemptionCode  String?   @unique @map("redemption_code")
+  reservedUntil   DateTime? @map("reserved_until")
+  purchasedAt     DateTime  @default(now()) @map("purchased_at")
+  redeemedAt      DateTime? @map("redeemed_at")
+
+  user    User        @relation(fields: [userId], references: [id])
+  product PassProduct @relation(fields: [passProductId], references: [id])
+  venue   Venue       @relation(fields: [venueId], references: [id])
+  payment Payment?
+
+  @@index([userId, status])
+  @@index([venueId, status])
+  @@index([status, reservedUntil])
+  @@map("purchases")
+}
+
+model Payment {
+  id                      String   @id @default(cuid())
+  purchaseId              String   @unique
+  stripePaymentIntentId   String   @unique @map("stripe_payment_intent_id")
+  amountCents             Int      @map("amount_cents")
+  applicationFeeCents     Int      @map("application_fee_cents")
+  currency                String   @default("eur")
+  status                  String
+  idempotencyKey          String   @unique @map("idempotency_key")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+
+  @@map("payments")
+}
+
+model StripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("stripe_events")
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  type       String
+  actorId    String?
+  venueId    String?
+  purchaseId String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User?  @relation("Actor", fields: [actorId], references: [id])
+  venue Venue? @relation(fields: [venueId], references: [id])
+
+  @@index([venueId, createdAt])
+  @@index([type, createdAt])
+  @@map("audit_events")
+}

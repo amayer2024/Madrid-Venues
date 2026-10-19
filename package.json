@@ -1,0 +1,23 @@
+{
+  "name": "lineskip",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.6",
+    "typescript": "^5.6.3"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "pnpm --filter @lineskip/web dev",
+    "dev:mobile": "pnpm --filter @lineskip/mobile start",
+    "build": "turbo build",
+    "test": "pnpm --filter @lineskip/db test",
+    "db:generate": "pnpm --filter @lineskip/db generate",
+    "db:migrate": "pnpm --filter @lineskip/db migrate",
+    "db:seed": "pnpm --filter @lineskip/db seed",
+    "db:push": "pnpm --filter @lineskip/db push"
+  }
+}

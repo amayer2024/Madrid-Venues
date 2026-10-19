@@ -8,3 +8,17 @@ data/
 .coverage
 htmlcov/
 .DS_Store
+
+node_modules/
+.turbo/
+.next/
+dist/
+.expo/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+coverage/
+.pnpm-store/
+apps/mobile/ios/
+apps/mobile/android/
